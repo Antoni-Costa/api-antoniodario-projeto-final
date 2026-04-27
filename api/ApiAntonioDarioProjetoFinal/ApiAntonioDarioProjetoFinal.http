@@ -1,0 +1,6 @@
+@ApiAntonioDarioProjetoFinal_HostAddress = http://localhost:5246
+
+GET {{ApiAntonioDarioProjetoFinal_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

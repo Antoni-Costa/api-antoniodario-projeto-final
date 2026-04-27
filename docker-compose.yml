@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: api-antoniodario-projeto-final-sqlserver-1
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "StrongPass123!"
+    ports:
+      - "1435:1433" # Alterado: a porta 1435 no seu PC liga à 1433 do contentor
+    volumes:
+      - sqldata:/var/opt/mssql
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  mountebank:
+    image: bbyars/mountebank:latest
+    ports:
+      - "2525:2525"
+      - "3001:3001"
+      - "3002:3002"
+    volumes:
+      - ./imposter:/imposter
+    command: --configfile /imposter/mountebank.json --allowInjection
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # Nota: Dentro da rede do Docker, os serviços falam pelo nome (sqlserver) na porta interna (1433)
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=ProjetoFinalDB;User Id=sa;Password=StrongPass123!;TrustServerCertificate=True
+      - Redis__ConnectionString=redis:6379
+      - Jwt__Key=ChaveSecretaMuitoLongaParaJWT2026AntonioDario!
+      - Jwt__Issuer=ApiAntonioDario
+      - Jwt__Audience=ApiAntonioDarioUsers
+    depends_on:
+      - sqlserver
+      - redis
+      - mountebank
+
+volumes:
+  sqldata:
