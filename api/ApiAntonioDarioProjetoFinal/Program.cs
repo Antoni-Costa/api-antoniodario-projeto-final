@@ -9,56 +9,94 @@ using Polly.Extensions.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Base de dados
+// --- 1. Base de Dados com Resiliência ---
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
-// Redis Cache
+// --- 2. Cache (Redis e Memory) ---
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration["Redis:ConnectionString"];
     options.InstanceName = "ProjetoFinal:";
 });
-
 builder.Services.AddMemoryCache();
 
-// Polly — cliente HTTP com retries para o Imposter
+// --- 3. Polly (Resiliência para Clientes HTTP) ---
 builder.Services.AddHttpClient("ImposterClient")
     .AddPolicyHandler(GetRetryPolicy())
     .AddPolicyHandler(GetCircuitBreakerPolicy());
 
-// JWT
-var jwtKey = builder.Configuration["Jwt:Key"]!;
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+// --- 4. Autenticação JWT ---
+// CHAVE, ISSUER E AUDIENCE FIXOS (Garante 100% de match com o AuthController)
+var jwtKey = "ChaveSecretaMuitoLongaParaJWT2026AntonioDario!";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.MapInboundClaims = false;
+    options.TokenHandlers.Clear(); // Limpa os antigos
+    options.TokenHandlers.Add(new Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler()); // Usa o novo
+    
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        options.TokenValidationParameters = new TokenValidationParameters
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ValidateIssuer = true,
+        ValidIssuer = "ApiAntonioDario",         // Fixo (Hardcoded)
+        ValidateAudience = true,
+        ValidAudience = "ApiAntonioDarioUsers",  // Fixo (Hardcoded)
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+    {
+        var authHeader = context.Request.Headers["Authorization"].ToString();
+    
+        // LOG DE EMERGÊNCIA: Vamos ver o que está a chegar no terminal
+        Console.WriteLine($"--- DEBUG HEADER ---");
+        Console.WriteLine($"Recebido: '{authHeader}'"); 
+    
+        if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
         {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidateAudience = true,
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            ValidateLifetime = true
-        };
-    });
+            var token = authHeader.Substring("Bearer ".Length).Trim();
+            // Limpeza agressiva
+            token = token.Replace("\"", "").Replace("\n", "").Replace("\r", "").Trim();
+            context.Token = token;
+        
+            Console.WriteLine($"Token Extraído: '{context.Token}'");
+        }
+        return Task.CompletedTask;
+    },
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine("--- ERRO DE AUTENTICAÇÃO DETETADO ---");
+            Console.WriteLine($"Erro: {context.Exception.Message}");
+            return Task.CompletedTask;
+        }
+    };
+});
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 
-// Swagger com suporte a JWT
+// --- 5. Swagger ---
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo {
-        Title = "API Antonio Dario — Projeto Final UC605",
-        Version = "v1"
-    });
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme {
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "API Antonio Dario", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
         In = ParameterLocation.Header,
-        Description = "Escreve: Bearer {token} — SEM chavetas",
+        Description = "Insira o token desta forma: Bearer {teu_token}",
         Name = "Authorization",
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
@@ -72,20 +110,24 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-app.UseSwagger();
-app.UseSwaggerUI();
-app.UseHttpsRedirection();
+// --- 6. Pipeline de Execução ---
+if (app.Environment.IsDevelopment() || true) // Forçado true para facilitar no Docker
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
 app.Run();
 
-// Retry: tenta 3 vezes com espera crescente (2s, 4s, 8s)
+// --- 7. Políticas Polly ---
 static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy() =>
     HttpPolicyExtensions.HandleTransientHttpError()
         .WaitAndRetryAsync(3, attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)));
 
-// Circuit Breaker: após 5 falhas, para de tentar por 30 segundos
 static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy() =>
     HttpPolicyExtensions.HandleTransientHttpError()
         .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));

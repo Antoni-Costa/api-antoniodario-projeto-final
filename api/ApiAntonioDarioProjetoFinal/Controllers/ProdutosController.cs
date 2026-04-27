@@ -15,11 +15,15 @@ public class ProdutosController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IDistributedCache _cache;
+    private readonly IHttpClientFactory _clientFactory;
 
-    public ProdutosController(AppDbContext db, IDistributedCache cache)
-    { _db = db; _cache = cache; }
+    public ProdutosController(AppDbContext db, IDistributedCache cache, IHttpClientFactory clientFactory)
+    { 
+        _db = db; 
+        _cache = cache; 
+        _clientFactory = clientFactory;
+    }
 
-    // GET /api/produtos — lista todos (com cache Redis por 5 minutos)
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -36,7 +40,23 @@ public class ProdutosController : ControllerBase
         return Ok(produtos);
     }
 
-    // GET /api/produtos/{id}
+    // NOVO MÉTODO: GET /api/produtos/stock/{sku}
+    // Este método resolve o erro 404 e usa o Mountebank + Polly
+    [HttpGet("stock/{sku}")]
+    public async Task<IActionResult> GetStock(string sku)
+    {
+        var client = _clientFactory.CreateClient("ImposterClient");
+        
+        // Chamada ao Mountebank usando o nome do serviço no Docker
+        var response = await client.GetAsync($"http://mountebank:3001/stock/{sku}");
+
+        if (!response.IsSuccessStatusCode)
+            return StatusCode((int)response.StatusCode, "Erro ao consultar stock externo");
+
+        var content = await response.Content.ReadAsStringAsync();
+        return Ok(JsonSerializer.Deserialize<object>(content));
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
@@ -44,7 +64,6 @@ public class ProdutosController : ControllerBase
         return p == null ? NotFound() : Ok(p);
     }
 
-    // POST /api/produtos
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] Produto produto)
     {
@@ -54,7 +73,6 @@ public class ProdutosController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = produto.Id }, produto);
     }
 
-    // PUT /api/produtos/{id}
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] Produto produto)
     {
@@ -65,7 +83,6 @@ public class ProdutosController : ControllerBase
         return NoContent();
     }
 
-    // DELETE /api/produtos/{id}
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {

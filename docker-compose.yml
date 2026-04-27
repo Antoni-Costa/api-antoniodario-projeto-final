@@ -1,15 +1,12 @@
-version: '3.8'
-
 services:
 
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: api-antoniodario-projeto-final-sqlserver-1
     environment:
       ACCEPT_EULA: "Y"
       SA_PASSWORD: "StrongPass123!"
     ports:
-      - "1435:1433" # Alterado: a porta 1435 no seu PC liga à 1433 do contentor
+      - "1433:1433"
     volumes:
       - sqldata:/var/opt/mssql
 
@@ -35,8 +32,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # Nota: Dentro da rede do Docker, os serviços falam pelo nome (sqlserver) na porta interna (1433)
-      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=ProjetoFinalDB;User Id=sa;Password=StrongPass123!;TrustServerCertificate=True
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=ProjetoFinalDB;User Id=sa;Password=StrongPass123!;TrustServerCertificate=True
       - Redis__ConnectionString=redis:6379
       - Jwt__Key=ChaveSecretaMuitoLongaParaJWT2026AntonioDario!
       - Jwt__Issuer=ApiAntonioDario
