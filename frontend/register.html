@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registar — API Antonio Dario</title>
+    <style>
+        /* Estilos idênticos ao login para coerência */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; 
+               display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .card { background: #1e293b; border: 1px solid #334155; padding: 40px; 
+                border-radius: 16px; width: 100%; max-width: 400px; }
+        h1 { font-size: 24px; margin-bottom: 24px; text-align: center; color: #f1f5f9; }
+        label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
+        input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; 
+                border-radius: 8px; color: #fff; margin-bottom: 16px; outline: none; }
+        button { width: 100%; padding: 12px; background: #10b981; border: none; border-radius: 8px; 
+                 color: #fff; font-weight: 600; cursor: pointer; }
+        .footer { text-align: center; margin-top: 20px; font-size: 14px; }
+        .footer a { color: #4f8ef7; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>👤 Criar Conta</h1>
+        <label>Nome Completo</label>
+        <input type="text" id="nome" placeholder="Seu nome">
+        
+        <label>Email</label>
+        <input type="email" id="email" placeholder="exemplo@email.com">
+        
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Mínimo 6 caracteres">
+        
+        <button onclick="executarRegisto()">Criar Minha Conta</button>
+        
+        <div class="footer">
+            Já tem conta? <a href="index.html">Fazer Login</a>
+        </div>
+    </div>
+    <script src="api.js"></script>
+    <script>
+        async function executarRegisto() {
+            const res = await registar(document.getElementById('nome').value, document.getElementById('email').value, document.getElementById('password').value);
+            if (res && (res.id || res.email)) { 
+                alert("Conta criada com sucesso!"); 
+                window.location.href = "index.html"; 
+            } else { 
+                alert("Erro ao criar conta. Verifique os dados."); 
+            }
+        }
+    </script>
+</body>
+</html>

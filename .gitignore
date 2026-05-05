@@ -1,4 +1,27 @@
+# --- .NET (C#) ---
+**/.bin/
+**/.obj/
+**/out/
+TestResults/
+*.suo
+*.user
+*.sln.dotSettings.user
+
+# --- Docker ---
+# Não enviar os dados persistentes da base de dados
+database/
+# Se usares ficheiros .env com passwords reais, ignora-os
 .env
-**/bin/
-**/obj/
+# Ignorar dados de volumes locais (caso cries pastas para o redis/sql manualmente)
+sqldata/
+
+# --- IDEs (VS Code / Visual Studio) ---
+.vscode/
+.idea/
+*.swp
+*.lut
 .vs/
+
+# --- Sistema ---
+.DS_Store
+Thumbs.db

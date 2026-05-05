@@ -16,11 +16,12 @@ public class AuthController : ControllerBase
     private readonly IConfiguration _config;
 
     public AuthController(AppDbContext db, IConfiguration config)
-    { 
-        _db = db; 
-        _config = config; 
+    {
+        _db = db;
+        _config = config;
     }
 
+    // POST /api/auth/register
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest req)
     {
@@ -28,16 +29,19 @@ public class AuthController : ControllerBase
             return Conflict(new { mensagem = "Email já registado" });
 
         var u = new Models.Utilizador {
-            Nome = req.Nome, 
-            Email = req.Email, 
-            Password = req.Password, 
-            Role = "User"
+            Nome     = req.Nome,
+            Email    = req.Email,
+            Password = req.Password,
+            Role     = "User"
         };
+
         _db.Utilizadores.Add(u);
         await _db.SaveChangesAsync();
-        return Created("", new { u.Id, u.Email, u.Nome });
+
+        return Created("", new { u.Id, u.Email, u.Nome, u.Role });
     }
 
+    // POST /api/auth/login
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest req)
     {
@@ -47,29 +51,37 @@ public class AuthController : ControllerBase
         if (user == null)
             return Unauthorized(new { mensagem = "Email ou password incorretos" });
 
-        var token = GerarToken(user.Email, user.Role, user.Id);
+        var token = GerarToken(user.Email, user.Role, user.Id, user.Nome);
+
         return Ok(new { token, user.Nome, user.Email, user.Role });
     }
 
-    private string GerarToken(string email, string role, int id)
+    private string GerarToken(string email, string role, int id, string nome)
     {
-        // IMPORTANTE: Esta chave TEM de ser igual à que está no Program.cs
-        var chaveString = "ChaveSecretaMuitoLongaParaJWT2026AntonioDario!";
-        var chave = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(chaveString));
+        var jwtKey      = _config["Jwt:Key"]      ?? _config["Jwt__Key"]      ?? "ChaveSecretaMuitoLongaParaJWT2026AntonioDario!";
+        var jwtIssuer   = _config["Jwt:Issuer"]   ?? _config["Jwt__Issuer"]   ?? "ApiAntonioDario";
+        var jwtAudience = _config["Jwt:Audience"] ?? _config["Jwt__Audience"] ?? "ApiAntonioDarioUsers";
+
+        var chave = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var creds = new SigningCredentials(chave, SecurityAlgorithms.HmacSha256);
-        
-        var claims = new[] {
-            new Claim(ClaimTypes.Email, email),
-            new Claim(ClaimTypes.Role, role),
-            new Claim(ClaimTypes.NameIdentifier, id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+
+        // IMPORTANTE: usar ClaimTypes.Role garante que [Authorize(Roles="Admin")] funciona
+        // O JwtSecurityTokenHandler serializa ClaimTypes.Role para o claim standard do JWT
+        var claims = new List<Claim>
+        {
+            new Claim(JwtRegisteredClaimNames.Sub,        id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email,      email),
+            new Claim(JwtRegisteredClaimNames.UniqueName, nome),
+            new Claim(JwtRegisteredClaimNames.Jti,        Guid.NewGuid().ToString()),
+            new Claim(ClaimTypes.NameIdentifier,          id.ToString()),
+            new Claim(ClaimTypes.Role,                    role)   // ← crucial para [Authorize(Roles="Admin")]
         };
 
         var token = new JwtSecurityToken(
-            issuer: "ApiAntonioDario",         // Fixo para bater certo com o Program.cs
-            audience: "ApiAntonioDarioUsers",  // Fixo para bater certo com o Program.cs
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(24),
+            issuer:             jwtIssuer,
+            audience:           jwtAudience,
+            claims:             claims,
+            expires:            DateTime.UtcNow.AddHours(8),
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

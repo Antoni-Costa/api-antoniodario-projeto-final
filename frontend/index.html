@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — API Antonio Dario</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; 
+               display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .card { background: #1e293b; border: 1px solid #334155; padding: 40px; 
+                border-radius: 16px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        h1 { font-size: 24px; margin-bottom: 24px; text-align: center; color: #f1f5f9; }
+        .input-group { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
+        input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; 
+                border-radius: 8px; color: #fff; font-size: 14px; outline: none; transition: 0.2s; }
+        input:focus { border-color: #4f8ef7; box-shadow: 0 0 0 2px rgba(79, 142, 247, 0.2); }
+        button { width: 100%; padding: 12px; background: #4f8ef7; border: none; border-radius: 8px; 
+                 color: #fff; font-weight: 600; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+        button:hover { background: #3b82f6; }
+        button:disabled { background: #334155; cursor: not-allowed; }
+        .footer { text-align: center; margin-top: 20px; font-size: 14px; color: #94a3b8; }
+        .footer a { color: #4f8ef7; text-decoration: none; }
+        #msgErro { background: #ef444415; color: #ef4444; padding: 10px; border-radius: 6px; 
+                   font-size: 13px; margin-bottom: 16px; border: 1px solid #ef444430; display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔐 Entrar</h1>
+        <div id="msgErro"></div>
+        
+        <div class="input-group">
+            <label>Email</label>
+            <input type="email" id="email" placeholder="exemplo@email.com">
+        </div>
+        
+        <div class="input-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="••••••••">
+        </div>
+        
+        <button id="btnLogin" onclick="executarLogin()">Entrar no Sistema</button>
+        
+        <div class="footer">
+            Ainda não tem conta? <a href="register.html">Criar conta</a>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        if (estaLogado()) window.location.href = 'dashboard.html';
+        async function executarLogin() {
+            const btn = document.getElementById('btnLogin');
+            const erroDiv = document.getElementById('msgErro');
+            erroDiv.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'A validar...';
+
+            const res = await login(document.getElementById('email').value, document.getElementById('password').value);
+            
+            if (res.sucesso) {
+                window.location.href = 'dashboard.html';
+            } else { 
+                erroDiv.textContent = res.mensagem;
+                erroDiv.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Entrar no Sistema';
+            }
+        }
+
+        document.getElementById("password").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+            event.preventDefault();
+            executarLogin();
+            }
+        });
+
+        document.getElementById("email").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+            event.preventDefault();
+            executarLogin();
+            }
+        });
+    </script>
+</body>
+</html>

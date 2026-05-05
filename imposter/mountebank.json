@@ -3,28 +3,37 @@
     {
       "port": 3001,
       "protocol": "http",
-      "name": "Serviço de Inventário",
-      "stubs": [{
-        "predicates": [{ "matches": { "path": "/inventory/.*", "method": "GET" } }],
-        "responses": [{ "is": {
-          "statusCode": 200,
-          "headers": { "Content-Type": "application/json" },
-          "body": "{\"sku\": \"SKU-001\", \"quantity\": 50, \"available\": true}"
-        }}]
-      }]
-    },
-    {
-      "port": 3002,
-      "protocol": "http",
-      "name": "Serviço de Pagamentos",
-      "stubs": [{
-        "predicates": [{ "equals": { "path": "/payments", "method": "POST" } }],
-        "responses": [{ "is": {
-          "statusCode": 200,
-          "headers": { "Content-Type": "application/json" },
-          "body": "{\"transactionId\": \"TXN-12345\", \"status\": \"approved\", \"amount\": 29.99}"
-        }}]
-      }]
+      "name": "Servico de Inventario e Pagamentos",
+      "stubs": [
+        {
+          "predicates": [
+            { "matches": { "path": "/inventory/.*", "method": "GET" } }
+          ],
+          "responses": [
+            {
+              "is": {
+                "statusCode": 200,
+                "headers": { "Content-Type": "application/json" },
+                "body": "{\"sku\": \"SKU-001\", \"quantity\": 50, \"available\": true}"
+              }
+            }
+          ]
+        },
+        {
+          "predicates": [
+            { "equals": { "path": "/payments", "method": "POST" } }
+          ],
+          "responses": [
+            {
+              "is": {
+                "statusCode": 200,
+                "headers": { "Content-Type": "application/json" },
+                "body": "{\"transactionId\": \"TXN-12345\", \"status\": \"approved\", \"amount\": 29.99}"
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

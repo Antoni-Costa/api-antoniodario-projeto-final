@@ -9,125 +9,140 @@ using Polly.Extensions.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. Base de Dados com Resiliência ---
+// ── BASE DE DADOS ─────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlOptions => sqlOptions.EnableRetryOnFailure()));
+        sqlOptions => sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorNumbersToAdd: null)));
 
-// --- 2. Cache (Redis e Memory) ---
+// ── REDIS CACHE ───────────────────────────────────────────────
+// Suporta tanto "Redis:ConnectionString" (appsettings) como
+// "Redis__ConnectionString" (variáveis de ambiente Docker)
+var redisConn = builder.Configuration["Redis:ConnectionString"]
+             ?? builder.Configuration["Redis__ConnectionString"]
+             ?? "redis:6379";
+
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = builder.Configuration["Redis:ConnectionString"];
+    options.Configuration = redisConn;
     options.InstanceName = "ProjetoFinal:";
 });
+
+// ── MEMORY CACHE (Polly L1) ───────────────────────────────────
 builder.Services.AddMemoryCache();
 
-// --- 3. Polly (Resiliência para Clientes HTTP) ---
+// ── POLLY — HTTP client para o Imposter ──────────────────────
 builder.Services.AddHttpClient("ImposterClient")
     .AddPolicyHandler(GetRetryPolicy())
     .AddPolicyHandler(GetCircuitBreakerPolicy());
 
-// --- 4. Autenticação JWT ---
-// CHAVE, ISSUER E AUDIENCE FIXOS (Garante 100% de match com o AuthController)
-var jwtKey = "ChaveSecretaMuitoLongaParaJWT2026AntonioDario!";
+// ── JWT ───────────────────────────────────────────────────────
+// Lê a chave JWT — suporta appsettings e variáveis Docker (__)
+var jwtKey      = builder.Configuration["Jwt:Key"]      ?? builder.Configuration["Jwt__Key"]      ?? "ChaveSecretaMuitoLongaParaJWT2026AntonioDario!";
+var jwtIssuer   = builder.Configuration["Jwt:Issuer"]   ?? builder.Configuration["Jwt__Issuer"]   ?? "ApiAntonioDario";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? builder.Configuration["Jwt__Audience"] ?? "ApiAntonioDarioUsers";
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.MapInboundClaims = false;
-    options.TokenHandlers.Clear(); // Limpa os antigos
-    options.TokenHandlers.Add(new Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler()); // Usa o novo
-    
-    options.TokenValidationParameters = new TokenValidationParameters
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
     {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-        ValidateIssuer = true,
-        ValidIssuer = "ApiAntonioDario",         // Fixo (Hardcoded)
-        ValidateAudience = true,
-        ValidAudience = "ApiAntonioDarioUsers",  // Fixo (Hardcoded)
-        ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
-    };
-
-    options.Events = new JwtBearerEvents
-    {
-        OnMessageReceived = context =>
-    {
-        var authHeader = context.Request.Headers["Authorization"].ToString();
-    
-        // LOG DE EMERGÊNCIA: Vamos ver o que está a chegar no terminal
-        Console.WriteLine($"--- DEBUG HEADER ---");
-        Console.WriteLine($"Recebido: '{authHeader}'"); 
-    
-        if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        // NÃO usar MapInboundClaims = false nem substituir TokenHandlers
+        // Isso quebra ClaimTypes.Role e [Authorize(Roles = "Admin")]
+        options.TokenValidationParameters = new TokenValidationParameters
         {
-            var token = authHeader.Substring("Bearer ".Length).Trim();
-            // Limpeza agressiva
-            token = token.Replace("\"", "").Replace("\n", "").Replace("\r", "").Trim();
-            context.Token = token;
-        
-            Console.WriteLine($"Token Extraído: '{context.Token}'");
-        }
-        return Task.CompletedTask;
-    },
-        OnAuthenticationFailed = context =>
-        {
-            Console.WriteLine("--- ERRO DE AUTENTICAÇÃO DETETADO ---");
-            Console.WriteLine($"Erro: {context.Exception.Message}");
-            return Task.CompletedTask;
-        }
-    };
-});
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateIssuer   = true,
+            ValidIssuer      = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience    = jwtAudience,
+            ValidateLifetime = true,
+            ClockSkew        = TimeSpan.Zero,
+            // Garante que o campo "role" do JWT é mapeado para ClaimTypes.Role
+            RoleClaimType    = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+        };
+    });
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 
-// --- 5. Swagger ---
+// ── CORS ──────────────────────────────────────────────────────
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("PermitirFrontend", policy =>
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+});
+
+// ── SWAGGER ───────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "API Antonio Dario", Version = "v1" });
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        In = ParameterLocation.Header,
-        Description = "Insira o token desta forma: Bearer {teu_token}",
-        Name = "Authorization",
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+    c.SwaggerDoc("v1", new OpenApiInfo {
+        Title       = "API Antonio Dario — Projeto Final UC605",
+        Version     = "v1",
+        Description = "API REST com SQL Server, Redis Cache (híbrido Polly+Redis), Polly e Mountebank"
+    });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme {
+        In          = ParameterLocation.Header,
+        Description = "Insere: Bearer {token}  (sem chavetas)",
+        Name        = "Authorization",
+        Type        = SecuritySchemeType.ApiKey,
+        Scheme      = "Bearer"
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement {{
         new OpenApiSecurityScheme {
             Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-        }, new string[] {}
+        }, Array.Empty<string>() // Sintaxe otimizada para .NET
     }});
 });
 
 var app = builder.Build();
 
-// --- 6. Pipeline de Execução ---
-if (app.Environment.IsDevelopment() || true) // Forçado true para facilitar no Docker
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
+// ── MIDDLEWARE PIPELINE ───────────────────────────────────────
+// A ordem é importante: CORS → Swagger → Auth → Controllers
+app.UseCors("PermitirFrontend");
+app.UseSwagger();
+app.UseSwaggerUI();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+// ── MIGRAÇÕES AUTOMÁTICAS (Docker) ───────────────────────────
+// Aplica migrações pendentes ao arrancar — necessário no Docker
+// porque a BD é criada pelo EF e não pelo script SQL externo
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var retries = 0;
+    while (retries < 10)
+    {
+        try
+        {
+            db.Database.EnsureCreated();
+            Console.WriteLine(">>> Base de dados verificada/atualizada com sucesso.");
+            break;
+        }
+        catch (Exception ex)
+        {
+            retries++;
+            Console.WriteLine($">>> Tentativa {retries}/10 — BD não pronta ainda: {ex.Message}");
+            Thread.Sleep(3000); // espera 3s antes de tentar de novo
+        }
+    }
+}
+
 app.Run();
 
-// --- 7. Políticas Polly ---
+// ── POLÍTICAS POLLY ───────────────────────────────────────────
+
+// Retry: tenta 3x com espera exponencial (2s, 4s, 8s)
 static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy() =>
     HttpPolicyExtensions.HandleTransientHttpError()
         .WaitAndRetryAsync(3, attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)));
 
+// Circuit Breaker: após 5 falhas consecutivas, para 30 segundos
 static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy() =>
     HttpPolicyExtensions.HandleTransientHttpError()
         .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));

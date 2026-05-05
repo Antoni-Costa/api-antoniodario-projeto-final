@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard — API Antonio Dario</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+        nav { background: #1e293b; padding: 16px 32px; display: flex; justify-content: space-between; border-bottom: 1px solid #334155; position: sticky; top: 0; z-index: 100;}
+        .container { max-width: 1200px; margin: 24px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .panel { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
+        .full { grid-column: 1 / -1; }
+        .badge { font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: bold; background: #10b98120; color: #10b981; border: 1px solid #10b98140; }
+        input, select { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #fff; margin-bottom: 12px; }
+        button { width: 100%; padding: 10px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-blue { background: #4f8ef7; color: #fff; }
+        .btn-red { background: #ef444420; color: #ef4444; width: auto; padding: 4px 8px; }
+        .item-list { background: #0f172a; padding: 10px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .resultado { background: #000; color: #38bdf8; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 11px; margin-top: 10px; overflow-x: auto; }
+        .admin-only { display: none; }
+    </style>
+</head>
+<body>
+    <nav>
+        <h2>🚀 API Antonio Dario</h2>
+        <div><span id="roleLabel" style="margin-right:15px"></span><button onclick="limparToken()" style="background:#ef4444; width:auto; padding:5px 15px">Sair</button></div>
+    </nav>
+
+    <div class="container">
+        <!-- CRUD PRODUTOS -->
+        <div class="panel full">
+            <h3>📦 Produtos <span class="badge">Redis Híbrido</span></h3>
+            <div id="listaProdutos" style="margin-top:15px"></div>
+            <button class="btn-blue" style="width:auto" onclick="carregarProdutos()">🔄 Atualizar</button>
+        </div>
+
+        <!-- NOVO PRODUTO (ADMIN) -->
+        <div class="panel admin-only">
+            <h3>➕ Criar Produto</h3>
+            <input id="pNome" placeholder="Nome">
+            <input id="pPreco" type="number" placeholder="Preço">
+            <input id="pSKU" placeholder="SKU (ex: SKU-001)">
+            <button class="btn-blue" onclick="exec CriarProduto()">Salvar no SQL Server</button>
+        </div>
+
+        <!-- GESTÃO UTILIZADORES (ADMIN - CRUD) -->
+        <div class="panel admin-only">
+            <h3>👥 Utilizadores</h3>
+            <div id="listaUtilizadores" style="margin-top:10px"></div>
+        </div>
+
+        <!-- MOCK INVENTÁRIO -->
+        <div class="panel">
+            <h3>🏭 Inventário <span class="badge">Mock</span></h3>
+            <input id="invSKU" placeholder="SKU-001">
+            <button class="btn-blue" onclick="execInventario()">Consultar Mountebank</button>
+            <pre id="resInv" class="resultado">Aguardando...</pre>
+        </div>
+
+        <!-- MOCK PAGAMENTOS (NOVO REQUISITO) -->
+        <div class="panel">
+            <h3>💳 Pagamentos <span class="badge">Mock Externo</span></h3>
+            <input id="pagValor" type="number" placeholder="Valor €">
+            <select id="pagMetodo"><option value="Cartao">Cartão de Crédito</option><option value="MBWay">MBWay</option></select>
+            <button class="btn-blue" onclick="execPagamento()">Processar Pagamento</button>
+            <pre id="resPag" class="resultado">Aguardando...</pre>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        (async function init() {
+            if (!estaLogado()) window.location.href = 'index.html';
+            const role = obterRole();
+            document.getElementById('roleLabel').textContent = `Sessão: ${role}`;
+            if (role.toLowerCase() === 'admin') {
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+                carregarUtilizadores();
+            }
+            carregarProdutos();
+        })();
+
+        async function carregarProdutos() {
+            const dados = await listarProdutos();
+            document.getElementById('listaProdutos').innerHTML = dados.map(p => `
+                <div class="item-list">
+                    <span><b>${p.nome || p.Nome}</b> - €${p.preco || p.Preco} (SKU: ${p.sku || p.Sku})</span>
+                    ${obterRole().toLowerCase()==='admin' ? `<button class="btn-red" onclick="removerP(${p.id || p.Id})">Apagar</button>` : ''}
+                </div>
+            `).join('');
+        }
+
+        async function carregarUtilizadores() {
+            const dados = await listarUtilizadores();
+            if(!dados) return;
+            document.getElementById('listaUtilizadores').innerHTML = dados.map(u => `
+                <div class="item-list">
+                    <span>${u.nome || u.Nome} (${u.email || u.Email})</span>
+                    <button class="btn-red" onclick="removerU(${u.id || u.Id})">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        async function execInventario() {
+            const res = await consultarInventario(document.getElementById('invSKU').value);
+            const div = document.getElementById('resInv');
+            div.textContent = res?.erro === "circuit_breaker" ? "🛡️ Polly: Circuito Aberto!" : JSON.stringify(res, null, 2);
+        }
+
+        async function execPagamento() {
+            const dados = { Valor: parseFloat(document.getElementById('pagValor').value), Metodo: document.getElementById('pagMetodo').value };
+            const res = await processarPagamento(dados);
+            document.getElementById('resPag').textContent = JSON.stringify(res, null, 2);
+        }
+
+        async function execCriarProduto() {
+            await criarProduto({ Nome: document.getElementById('pNome').value, Preco: parseFloat(document.getElementById('pPreco').value), SKU: document.getElementById('pSKU').value });
+            carregarProdutos();
+        }
+
+        async function removerP(id) { if(confirm("Apagar produto?")) { await apagarProduto(id); carregarProdutos(); } }
+        async function removerU(id) { if(confirm("Apagar utilizador?")) { await apagarUtilizador(id); carregarUtilizadores(); } }
+    </script>
+</body>
+</html>

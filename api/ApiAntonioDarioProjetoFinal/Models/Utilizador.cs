@@ -1,11 +1,27 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ApiAntonioDarioProjetoFinal.Models;
 
 public class Utilizador
 {
+    [Key]
     public int Id { get; set; }
-    public string Nome { get; set; } = "";
-    public string Email { get; set; } = "";
-    public string Password { get; set; } = "";
+
+    [Required]
+    [MaxLength(100)]
+    public string Nome { get; set; } = string.Empty;
+
+    [Required]
+    [EmailAddress]
+    [MaxLength(150)]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    public string Password { get; set; } = string.Empty;
+
+    // "Admin" ou "User" — usado por [Authorize(Roles = "Admin")]
+    [Required]
     public string Role { get; set; } = "User";
+
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }
