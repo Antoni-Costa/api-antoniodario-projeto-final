@@ -19,8 +19,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
             errorNumbersToAdd: null)));
 
 // ── REDIS CACHE ───────────────────────────────────────────────
-// Suporta tanto "Redis:ConnectionString" (appsettings) como
-// "Redis__ConnectionString" (variáveis de ambiente Docker)
 var redisConn = builder.Configuration["Redis:ConnectionString"]
              ?? builder.Configuration["Redis__ConnectionString"]
              ?? "redis:6379";
@@ -40,7 +38,6 @@ builder.Services.AddHttpClient("ImposterClient")
     .AddPolicyHandler(GetCircuitBreakerPolicy());
 
 // ── JWT ───────────────────────────────────────────────────────
-// Lê a chave JWT — suporta appsettings e variáveis Docker (__)
 var jwtKey      = builder.Configuration["Jwt:Key"]      ?? builder.Configuration["Jwt__Key"]      ?? "ChaveSecretaMuitoLongaParaJWT2026AntonioDario!";
 var jwtIssuer   = builder.Configuration["Jwt:Issuer"]   ?? builder.Configuration["Jwt__Issuer"]   ?? "ApiAntonioDario";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? builder.Configuration["Jwt__Audience"] ?? "ApiAntonioDarioUsers";
@@ -48,8 +45,7 @@ var jwtAudience = builder.Configuration["Jwt:Audience"] ?? builder.Configuration
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        // NÃO usar MapInboundClaims = false nem substituir TokenHandlers
-        // Isso quebra ClaimTypes.Role e [Authorize(Roles = "Admin")]
+        
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
@@ -101,7 +97,6 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // ── MIDDLEWARE PIPELINE ───────────────────────────────────────
-// A ordem é importante: CORS → Swagger → Auth → Controllers
 app.UseCors("PermitirFrontend");
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -128,7 +123,7 @@ using (var scope = app.Services.CreateScope())
         {
             retries++;
             Console.WriteLine($">>> Tentativa {retries}/10 — BD não pronta ainda: {ex.Message}");
-            Thread.Sleep(3000); // espera 3s antes de tentar de novo
+            Thread.Sleep(3000); 
         }
     }
 }

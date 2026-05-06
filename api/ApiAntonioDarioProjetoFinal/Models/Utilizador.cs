@@ -19,7 +19,6 @@ public class Utilizador
     [Required]
     public string Password { get; set; } = string.Empty;
 
-    // "Admin" ou "User" — usado por [Authorize(Roles = "Admin")]
     [Required]
     public string Role { get; set; } = "User";
 

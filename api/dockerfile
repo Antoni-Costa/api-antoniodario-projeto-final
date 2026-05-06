@@ -1,18 +1,14 @@
-# ── Estágio 1: Build ──────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# Copia o .csproj e restaura dependências (aproveita cache Docker)
 COPY api/ApiAntonioDarioProjetoFinal/ApiAntonioDarioProjetoFinal.csproj \
      api/ApiAntonioDarioProjetoFinal/
 RUN dotnet restore api/ApiAntonioDarioProjetoFinal/ApiAntonioDarioProjetoFinal.csproj
 
-# Copia o resto do código e publica
 COPY . .
 WORKDIR /src/api/ApiAntonioDarioProjetoFinal
 RUN dotnet publish -c Release -o /app/publish
 
-# ── Estágio 2: Runtime (imagem mais pequena) ───────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .

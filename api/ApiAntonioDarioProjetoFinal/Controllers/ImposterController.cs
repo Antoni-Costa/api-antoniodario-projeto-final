@@ -12,7 +12,7 @@ public class ImposterController : ControllerBase
     public ImposterController(IHttpClientFactory http) => _http = http;
 
     // GET /api/imposter/inventory/{sku}
-    // Chama o Mountebank (mock de inventário) com retry automático (Polly)
+    // Chama o Mountebank com retry automático
     [HttpGet("inventory/{sku}")]
 public async Task<IActionResult> GetInventory(string sku)
 {
@@ -33,7 +33,6 @@ public async Task<IActionResult> GetInventory(string sku)
 }
 
     // POST /api/imposter/payments
-    // Chama o Mountebank (mock de pagamentos) com retry automático (Polly)
     [HttpPost("payments")]
     public async Task<IActionResult> ProcessPayment([FromBody] object body)
     {

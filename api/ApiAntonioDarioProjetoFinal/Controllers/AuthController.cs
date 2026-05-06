@@ -65,8 +65,7 @@ public class AuthController : ControllerBase
         var chave = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var creds = new SigningCredentials(chave, SecurityAlgorithms.HmacSha256);
 
-        // IMPORTANTE: usar ClaimTypes.Role garante que [Authorize(Roles="Admin")] funciona
-        // O JwtSecurityTokenHandler serializa ClaimTypes.Role para o claim standard do JWT
+        // IMPORTANTE: usar ClaimTypes.Role garante que Authorize(Roles="Admin") funciona
         var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub,        id.ToString()),

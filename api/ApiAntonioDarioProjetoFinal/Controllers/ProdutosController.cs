@@ -26,7 +26,6 @@ public class ProdutosController : ControllerBase
     }
 
     // GET /api/produtos
-    // Cache híbrido: L1 IMemoryCache/Polly (30s) → L2 Redis (5min) → L3 SQL Server
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -91,7 +90,6 @@ public class ProdutosController : ControllerBase
         existente.Preco = produtoAtualizado.Preco;
         existente.Stock = produtoAtualizado.Stock;
         existente.SKU = produtoAtualizado.SKU;
-        // Não mexemos no "existente.CriadoEm"
 
         await _db.SaveChangesAsync(); 
         await InvalidarCache();

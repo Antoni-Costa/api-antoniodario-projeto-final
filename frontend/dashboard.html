@@ -27,6 +27,7 @@
     </nav>
 
     <div class="container">
+        
         <!-- CRUD PRODUTOS -->
         <div class="panel full">
             <h3>📦 Produtos <span class="badge">Redis Híbrido</span></h3>
@@ -39,11 +40,9 @@
             <h3>➕ Criar Produto</h3>
             <input id="pNome" placeholder="Nome">
             <input id="pPreco" type="number" placeholder="Preço">
-            <input id="pSKU" placeholder="SKU (ex: SKU-001)">
-            <button class="btn-blue" onclick="exec CriarProduto()">Salvar no SQL Server</button>
-        </div>
+            <button class="btn-blue" onclick="execCriarProduto()">Salvar no SQL Server</button>
 
-        <!-- GESTÃO UTILIZADORES (ADMIN - CRUD) -->
+        <!-- GESTÃO UTILIZADORES -->
         <div class="panel admin-only">
             <h3>👥 Utilizadores</h3>
             <div id="listaUtilizadores" style="margin-top:10px"></div>
@@ -57,7 +56,7 @@
             <pre id="resInv" class="resultado">Aguardando...</pre>
         </div>
 
-        <!-- MOCK PAGAMENTOS (NOVO REQUISITO) -->
+        <!-- MOCK PAGAMENTOS -->
         <div class="panel">
             <h3>💳 Pagamentos <span class="badge">Mock Externo</span></h3>
             <input id="pagValor" type="number" placeholder="Valor €">

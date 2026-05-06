@@ -27,7 +27,6 @@ public class UtilizadoresController : ControllerBase
     }
 
     // GET /api/utilizadores/{id}
-    // Admins vêem qualquer um; Users só vêem o seu próprio perfil
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {

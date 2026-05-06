@@ -1,6 +1,6 @@
 const API_URL = 'http://localhost:8080';
 
-// --- GESTÃO DE SESSÃO ---
+// GESTÃO DE SESSÃO 
 function guardarSessao(dados) {
     const token = dados.token || dados.Token;
     sessionStorage.setItem('jwt_token', token);
@@ -14,7 +14,7 @@ function obterRole() { return sessionStorage.getItem('user_role'); }
 function estaLogado() { return obterToken() !== null; }
 function limparToken() { sessionStorage.clear(); window.location.href = 'index.html'; }
 
-// --- LIMPEZA DE MOCKS (Remove as barras/aspas do Mountebank) ---
+// LIMPEZA DE MOCKS
 function limparDadosMock(resultado) {
     if (resultado && resultado.mensagem && typeof resultado.mensagem === 'string') {
         try { return JSON.parse(resultado.mensagem); } catch (e) { return resultado.mensagem; }
@@ -22,7 +22,7 @@ function limparDadosMock(resultado) {
     return resultado;
 }
 
-// --- CHAMADA BASE ---
+// CHAMADA BASE
 async function chamarAPI(endpoint, metodo = 'GET', corpo = null, comAuth = true) {
     const headers = { 'Content-Type': 'application/json' };
     if (comAuth) {
@@ -56,10 +56,10 @@ async function listarProdutos() { return await chamarAPI('/api/produtos'); }
 async function criarProduto(p) { return await chamarAPI('/api/produtos', 'POST', p); }
 async function apagarProduto(id) { return await chamarAPI(`/api/produtos/${id}`, 'DELETE'); }
 
-// CRUD Utilizadores (Novo: Requisito do Enunciado)
+// CRUD Utilizadores
 async function listarUtilizadores() { return await chamarAPI('/api/utilizadores'); }
 async function apagarUtilizador(id) { return await chamarAPI(`/api/utilizadores/${id}`, 'DELETE'); }
 
-// Mocks (Inventário e Pagamentos)
+// Mocks 
 async function consultarInventario(sku) { return await chamarAPI(`/api/imposter/inventory/${sku}`); }
 async function processarPagamento(dados) { return await chamarAPI('/api/imposter/payments', 'POST', dados); }
