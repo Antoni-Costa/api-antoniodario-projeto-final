@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ApiAntonioDarioProjetoFinal")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+62596dfa404aaeb767743dcb5f4a0cbaf516bf85")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+efcacd3032fda002e90e077a3b998be5bd3928c0")]
 [assembly: System.Reflection.AssemblyProductAttribute("ApiAntonioDarioProjetoFinal")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ApiAntonioDarioProjetoFinal")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
