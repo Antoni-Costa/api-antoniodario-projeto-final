@@ -1,48 +1,48 @@
 # API Antonio Dario — Projeto Final UC605
 
-## Descrição
-API REST desenvolvida em .NET 9 com SQL Server, Redis, Polly e Mountebank.
-Autenticação via JWT Bearer Token.
+## Descrição:
+Esta é uma solução completa de Gestão de Produtos e Pagamentos, composta por uma API REST robusta desenvolvida em .NET 8 e uma interface Frontend construída com HTML5 e JavaScript. O sistema destaca-se pela utilização de um padrão de cache híbrido (L1 + L2) para performance e políticas de resiliência HTTP para integração com serviços externos.  
 
 ## Tecnologias
-- .NET 9 / ASP.NET Core Web API
-- SQL Server 2022 (via Docker)
-- Redis 7 (cache distribuído)
-- Polly (retries + circuit breaker)
-- Mountebank (mock de serviços externos)
-- JWT (autenticação)
-- Docker + docker-compose
+### Backend: 
+.NET 8 / ASP.NET Core Web API.  
 
-## Como executar
+### Frontend: 
+HTML5, CSS3 (Dark Theme) e JavaScript (ES6+).  
 
-### Pré-requisito
-Docker Desktop instalado e em execução.
+### Base de Dados: 
+SQL Server 2022 (via Docker).  
 
-### Passos
-```bash
-git clone https://github.com/teu-user/api-antoniodario-projeto-final.git
+### Cache: Redis 7 (L2) e IMemoryCache (L1).  
+
+### Resiliência: 
+Polly (Wait and Retry + Circuit Breaker).  
+
+### Mocks: 
+Mountebank (Simulação de Inventário e Pagamentos).  
+
+### Segurança: Autenticação JWT com Roles (Admin e User).  
+
+### Orquestração: Docker + Docker Compose.  
+
+# Como executar
+Pré-requisitos: Docker Desktop instalado e em execução.
+Passos:
+1. Clone o repositório:Bashgit clone "https://github.com/Antoni-Costa/api-antoniodario-projeto-final.git"
 cd api-antoniodario-projeto-final
-docker-compose up --build
-```
+2. Inicie os contentores (API, SQL, Redis e Mountebank) com o comando docker-compose up --build na mesma pasta do docker-compose.yml
 
-API disponível em: http://localhost:8080
-Swagger: http://localhost:8080/swagger
+# API/Frontend: http://localhost:8080.Swagger UI: http://localhost:8080/swagger.  
 
-## Endpoints
+# Endpoints Principais
+Método  Endpoint                        Auth    Role    Descrição
+POST    /api/auth/login                 Não     -       Login e obtenção do JWT.  
+GET     /api/produtos                   Sim     Any     Listar produtos.  
+POST    /api/produtos                   Sim     Admin   Criar novo produto.  
+GET     /api/imposter/inventory/{sku}   Sim     Any     Consultar stock via Mountebank.  
+POST    /api/imposter/payments          Sim     Any     Processar pagamento via Mock Externo.  
+GET     /api/utilizadores               Sim     Admin   Listar todos os utilizadores.  
+DELETE  /api/utilizadores/{id}          Sim     Admin   Apagar conta de utilizador.  Resiliência e CacheCache 
 
-| Método | Endpoint | Auth | Descrição |
-|--------|----------|------|-----------|
-| POST | /api/auth/register | Não | Registar utilizador |
-| POST | /api/auth/login | Não | Login e obter JWT |
-| GET  | /api/produtos | Sim | Listar produtos (cache Redis) |
-| POST | /api/produtos | Sim | Criar produto |
-| PUT  | /api/produtos/{id} | Sim | Atualizar produto |
-| DELETE | /api/produtos/{id} | Sim | Apagar produto |
-| GET  | /api/imposter/inventory/{sku} | Sim | Inventário (mock) |
-| POST | /api/imposter/payments | Sim | Pagamento (mock) |
-
-## Base de Dados
-Scripts em `database/schema.sql` e `database/seed.sql`.
-
-## Variáveis de Ambiente
-Ver `.env.example` para as variáveis necessárias.
+# Base de Dados
+A API aplica as migrações automaticamente ao arrancar via Docker. Caso prefira execução manual, os esquemas encontram-se na pasta database/.  Variáveis de AmbienteAs configurações de ligação (SQL Server, Redis e JWT) estão pré-configuradas no docker-compose.yml.
